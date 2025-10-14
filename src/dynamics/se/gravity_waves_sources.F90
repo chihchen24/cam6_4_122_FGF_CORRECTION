@@ -370,8 +370,8 @@ CONTAINS
           dum_cart(:,:,component,k) = sum( gradth(:,:,:,k,ie) * dum_grad , 3 )
         end do
 
-        do component=1,2
-          C(:,:,component) = sum(dum_cart(:,:,:,k)*elem(ie)%vec_sphere2cart(:,:,:,component), 3)
+        do i=1,2
+          C(:,:,i) = sum(dum_cart(:,:,:,k)*elem(ie)%vec_sphere2cart(:,:,:,i), 3)
         end do
 
         ! gradth(:,:,:,k,ie) = gradient_sphere(theta,ederiv,elem(ie)%Dinv)
