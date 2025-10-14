@@ -247,6 +247,8 @@ CONTAINS
   ! Integrated into gravity_waves_sources module, several arguments made global
   !  to prevent repeated allocation/initialization
   !
+  ! Frontogenesis function correction by Walter Hannah, Mark Taylor, and Jack Chen. October 2025
+  !
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     use physconst,      only: cappa
     use air_composition,only: dry_air_species_num, thermodynamic_active_species_num
@@ -290,6 +292,31 @@ CONTAINS
     real(r8) :: C(np,np,2), sum_water(np,np)
 
 #ifdef USE_FGF_CORRECTION
+    !  By Mark Taylor 
+    !  For a vector velocity "v", a tensor "grad(v)", and a vector "grad(theta)",
+    !  this loop computes the vector "grad(theta)*grad(v)"
+    !
+    !  Representing the tensor "grad(v)" in spherical coordinates is difficult.  This routine
+    !  avoids this by computing a mathematically equivalent form using a mixture of
+    !  Cartesian and spherical coordinates
+    !
+    !  This routine is a modified version of derivative_mod.F90:ugradv_sphere() in that the
+    !  grad(v) term is modified to compute grad_p(v) - the gradient on p-surfaces expressed
+    !  in terms of the gradient on model surfaces and a vertical pressure gradient.  
+    !
+    !  First, v is represented in cartesian coordinates  v(c) for c=1,2,3
+    !  For each v(c), we compute its gradient on p-surfaces via:
+    !     grad(v(c)) - d(v(c))/dz grad(p)
+    !  Each of these gradients is represented in *spherical* coordinates (i=1,2)
+    !
+    !  We then dot each of these vectors with grad(theta).  This dot product is computed
+    !  in spherical coordinates.  The end result is dum_cart(c), for c=1,2,3
+    !  These three scalars are the three Cartesian coefficients of
+    !  the vector "grad(theta)*grad(v)"
+    !
+    !  This Cartesian vector is then transformed back to spherical coordinates
+    !
+
     do ie=nets,nete
       ! pressure at model top
       pint(:,:,1) = hvcoord%hyai(1)*hvcoord%ps0
@@ -338,7 +365,7 @@ CONTAINS
         do component=1,3
           call gradient_sphere(dum_cart(:,:,component,k),ederiv,elem(ie)%Dinv,dum_grad)
           do i=1,2
-            dum_grad(:,:,i) = dum_grad(:,:,2) - ddp_dum_cart(:,:,component,k) * gradp(:,:,component)
+            dum_grad(:,:,i) = dum_grad(:,:,i) - ddp_dum_cart(:,:,component,k) * gradp(:,:,i)
           end do
           dum_cart(:,:,component,k) = sum( gradth(:,:,:,k,ie) * dum_grad , 3 )
         end do
